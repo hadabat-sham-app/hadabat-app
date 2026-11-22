@@ -1,4 +1,4 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>هضبة الشام</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#8a3515"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="icon.svg"><meta name="theme-color" content="#7a2e12">
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><title>هضبة الشام</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#8a3515"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="icon.svg"><meta name="theme-color" content="#7a2e12">
 <style>
 html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}input,textarea,select{-webkit-user-select:text;user-select:text}
 @media print{header,nav,.noprint,.modal{display:none!important}body{background:#fff}.card{box-shadow:none;border:1px solid #ddd}}
@@ -26,13 +26,20 @@ label{font-size:14px;color:#6d5a4a}.low{color:var(--r);font-weight:700}.pos{colo
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:20px;z-index:50}
 .live{width:9px;height:9px;border-radius:50%;background:#6c6;display:inline-block}.live.off{background:#e55}
 table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;border-bottom:1px solid #eee;text-align:right;font-size:15px}
-</style></head><body><div id="app"></div>
+main>*,.card{animation:fi .2s ease}@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+button,.btn,nav button{touch-action:manipulation}html{touch-action:pan-x pan-y}
+#splash{position:fixed;inset:0;background:linear-gradient(135deg,#8a3515,#6b2610);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;z-index:99;transition:opacity .25s}#splash .l{width:92px;height:92px;border-radius:26px;background:#e0a526;color:#6b2610;font-weight:800;font-size:54px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}#splash b{font-size:24px}
+#qb{position:fixed;bottom:0;inset-inline:0;background:#e0a526;color:#2b2118;text-align:center;padding:8px;font-size:14px;z-index:20;display:none}
+</style></head><body><div id="splash"><div class="l">ه</div><b>هضبة الشام</b></div><div id="qb"></div><div id="app"></div>
 <script>
 const $=s=>document.querySelector(s);let T=localStorage.tok||'',S=null,tab='home',live=false,ev;
+addEventListener('error',e=>{try{toast('حدث خطأ غير متوقع، حاول مرة أخرى')}catch(x){}});addEventListener('unhandledrejection',e=>{e.preventDefault();if(e.reason!==0)try{toast(typeof e.reason==='string'?e.reason:'حدث خطأ غير متوقع، حاول مرة أخرى')}catch(x){}});document.addEventListener('contextmenu',e=>{if(!/INPUT|TEXTAREA/.test(e.target.tagName))e.preventDefault()});
+const hideSplash=()=>{const p=document.getElementById('splash');if(p){p.style.opacity=0;setTimeout(()=>p.remove(),300)}};setTimeout(hideSplash,4000);
+const NETERR='لا يوجد اتصال بالإنترنت، حاول مرة أخرى';
 const SB='https://sldyxjzofzlgszqebgbg.supabase.co/rest/v1/rpc/',KEY='sb_publishable_CfQPHmlPeGcKVuGtgdhK0w__1MRfQJ2';
 const RD=['version','state','needs_setup'];const post=async(fn,a)=>{for(let i=0;;i++){try{return await fetch(SB+fn,{method:'POST',headers:{'Content-Type':'application/json',apikey:KEY},body:JSON.stringify(a||{})})}catch(e){if(!RD.includes(fn)||i>=2)throw 'لا يوجد اتصال بالإنترنت، حاول مرة أخرى';await new Promise(r=>setTimeout(r,800*(i+1)))}}};
 const rpc=async(fn,a)=>{const r=await post(fn,a);const j=await r.json().catch(()=>({}));if(!r.ok){const m=j.message||'خطأ في الاتصال';if(/unauth|جلسة/i.test(m)&&fn!=='login'){logout();throw 0}throw m}return j};
-const api=(p,b)=>{b=b||{};switch(p){
+const apiRaw=(p,b)=>{b=b||{};switch(p){
 case'login':return rpc('login',{p_user:b.username,p_pass:b.password});
 case'state':return rpc('state',{t:T});
 case'item':return rpc('add_item',{t:T,p_name:b.name,p_unit:b.unit,p_qty:b.qty||0,p_cost:b.cost||0,p_min:b.min||0});
@@ -45,22 +52,25 @@ case'editdate':return rpc('edit_date',{t:T,p_id:b.id,p_kind:b.kind,p_at:b.at});
 case'users':return rpc('add_user',{t:T,p_user:b.username,p_name:b.name,p_pass:b.password,p_role:b.role});
 case'password':return rpc('change_password',{t:T,p_pass:b.password});
 }throw 'غير معروف'};
+const getQ=()=>{try{return JSON.parse(localStorage.q||'[]')}catch(e){return[]}};const setQ=q=>{localStorage.q=JSON.stringify(q);const el=document.getElementById('qb');if(el){el.style.display=q.length?'block':'none';el.textContent='⏳ '+q.length+' عملية محفوظة على الجهاز وهتتسجل أول ما الإنترنت يرجع'}};
+const api=async(p,b)=>{try{return await apiRaw(p,b)}catch(e){if(e===NETERR&&(p==='move'||p==='tx')){setQ(getQ().concat([{p,b}]));toast('مفيش إنترنت، العملية اتحفظت وهتتسجل تلقائياً');return{queued:1}}throw e}};
+let flushing=false;async function flushQ(){if(flushing)return;let q=getQ();if(!q.length)return;flushing=true;try{while(q.length){const it=q[0];try{await apiRaw(it.p,it.b)}catch(e){if(e===NETERR)break;toast('تعذر تسجيل عملية محفوظة: '+e)}q=q.slice(1);setQ(q)}}finally{flushing=false}if(!getQ().length)refresh()}
 const ad=s=>String(s).replace(/\d/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]).replace(/\./g,'٫');
 const fn=n=>ad((Math.round(n*100)/100).toLocaleString('en-US'));const money=n=>fn(n)+' ج.م';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const pn=s=>parseFloat(String(s).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[٫،,]/g,'.'));
-function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}
+function toast(m){if(typeof m!=='string'||!m)m='حدث خطأ، حاول مرة أخرى';const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}
 function logout(){localStorage.tok='';localStorage.removeItem('st');T='';S=null;clearInterval(pt);show()}
-function show(){if(!T){rpc('needs_setup').then(n=>n?setupView():loginView()).catch(()=>loginView());return}load()}
-function setupView(){$('#app').innerHTML=`<div class="card login"><div class="logo">ه</div><h2>هضبة الشام</h2><p>إعداد أول مرة: أنشئ حساب المدير</p><label>اسم المستخدم</label><input id="su" value="admin" autocapitalize="none"><label>كلمة المرور (٦ أحرف على الأقل)</label><input id="sp" type="password" autocomplete="new-password"><button class="btn" style="width:100%" id="sb">إنشاء</button></div>`;$('#sb').onclick=async()=>{try{await rpc('setup_admin',{p_user:$('#su').value,p_pass:$('#sp').value});toast('تم الإنشاء، سجّل الدخول');loginView()}catch(e){toast(e)}}}
-function loginView(){$('#app').innerHTML=`<div class="card login"><div class="logo">ه</div><h2>هضبة الشام</h2><p>نظام المخزون والحسابات</p><label>اسم المستخدم</label><input id="lu" autocomplete="username" autocapitalize="none"><label>كلمة المرور</label><input id="lp" type="password" autocomplete="current-password"><button class="btn" style="width:100%" id="lb">دخول</button></div>`;
+setQ(getQ());function show(){if(!T){rpc('needs_setup').then(n=>n?setupView():loginView()).catch(()=>loginView());return}load()}
+function setupView(){hideSplash();$('#app').innerHTML=`<div class="card login"><div class="logo">ه</div><h2>هضبة الشام</h2><p>إعداد أول مرة: أنشئ حساب المدير</p><label>اسم المستخدم</label><input id="su" value="admin" autocapitalize="none"><label>كلمة المرور (٦ أحرف على الأقل)</label><input id="sp" type="password" autocomplete="new-password"><button class="btn" style="width:100%" id="sb">إنشاء</button></div>`;$('#sb').onclick=async()=>{try{await rpc('setup_admin',{p_user:$('#su').value,p_pass:$('#sp').value});toast('تم الإنشاء، سجّل الدخول');loginView()}catch(e){toast(e)}}}
+function loginView(){hideSplash();$('#app').innerHTML=`<div class="card login"><div class="logo">ه</div><h2>هضبة الشام</h2><p>نظام المخزون والحسابات</p><label>اسم المستخدم</label><input id="lu" autocomplete="username" autocapitalize="none"><label>كلمة المرور</label><input id="lp" type="password" autocomplete="current-password"><button class="btn" style="width:100%" id="lb">دخول</button></div>`;
  const go=async()=>{try{const r=await api('login',{username:$('#lu').value,password:$('#lp').value});T=r.token;localStorage.tok=T;load()}catch(e){toast(e)}};$('#lb').onclick=go;$('#lp').onkeydown=e=>e.key==='Enter'&&go()}
 async function load(){try{const c=localStorage.st;if(c&&!S){S=JSON.parse(c);render()}}catch(e){}try{S=await api('state');try{localStorage.st=JSON.stringify(S)}catch(e){}render();connect()}catch(e){if(S)connect()}}
-let lastV=null,pt;function connect(){clearInterval(pt);const tick=async()=>{if(document.hidden||!T)return;try{const v=await rpc('version');live=true;dot();if(lastV!==null&&v!==lastV)refresh();lastV=v}catch(e){live=false;dot()}};tick();pt=setInterval(tick,2500);document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()})}
+let lastV=null,pt;function connect(){clearInterval(pt);const tick=async()=>{if(document.hidden||!T)return;try{const v=await rpc('version');live=true;dot();flushQ();if(lastV!==null&&v!==lastV)refresh();lastV=v}catch(e){live=false;dot()}};tick();pt=setInterval(tick,2500);document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()})}
 function dot(){const d=$('#dot');if(d)d.className='live'+(live?'':' off')}
 let rt;function refresh(){clearTimeout(rt);rt=setTimeout(async()=>{try{S=await api('state');try{localStorage.st=JSON.stringify(S)}catch(e){}if(!document.querySelector('.modal'))render()}catch(e){}},150)}
 const tabs=[['home','الرئيسية'],['stock','المخزون'],['moves','الحركات'],['money','المبيعات والمصروفات'],['rep','التقارير']];
-function render(){const adm=S.me.role==='admin';let tt=tabs.slice();if(adm)tt.push(['set','الإعدادات']);
+function render(){hideSplash();const adm=S.me.role==='admin';let tt=tabs.slice();if(adm)tt.push(['set','الإعدادات']);
  $('#app').innerHTML=`<header><div class="logo">ه</div><h1>هضبة الشام</h1><span class="u"><span id="dot" class="live ${live?'':'off'}"></span> ${esc(S.me.name)}</span><button onclick="logout()">خروج</button></header><nav>${tt.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="tab='${t[0]}';render()">${t[1]}</button>`).join('')}</nav><main id="m"></main>`;
  ({home,stock,moves,money:moneyV,rep,set})[tab==='money'?'money':tab]();}
 const iname=id=>(S.items.find(i=>i.id===id)||{name:'(محذوف)'}).name;
@@ -126,24 +136,82 @@ let cs=0;const cp=[];cd.forEach(([h,nb])=>{cp.push(new Uint8Array(h),nb);cs+=h.l
 const end=new Uint8Array([0x50,0x4b,5,6,0,0,0,0,...u16(files.length),...u16(files.length),...u32(cs),...u32(off),0,0]);return new Blob([...ch,...cp,end],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})}
 const xe=v=>String(v).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'');
 const colL=i=>String.fromCharCode(65+i);
-function sheetXml(rows){return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView rightToLeft="1" workbookViewId="0"/></sheetViews><cols><col min="1" max="1" width="22" customWidth="1"/><col min="2" max="2" width="24" customWidth="1"/><col min="3" max="6" width="16" customWidth="1"/><col min="7" max="7" width="30" customWidth="1"/></cols><sheetData>'+rows.map((r,ri)=>`<row r="${ri+1}">`+r.map((c,ci)=>{const ref=colL(ci)+(ri+1),st=r.st||0;if(c===''||c==null)return `<c r="${ref}" s="${st}"/>`;return typeof c==='number'?`<c r="${ref}" s="${st===1?1:st===2?4:3}"><v>${c}</v></c>`:`<c r="${ref}" s="${st}" t="inlineStr"><is><t>${xe(c)}</t></is></c>`}).join('')+'</row>').join('')+'</sheetData></worksheet>'}
-function exportX(){const{tx,mv}=window.RX;const R=[];const H=a=>{a.st=1;return a},T=a=>{a.st=2;return a};
-const per=rp==='day'?rd:(rp==='week'?'آخر ٧ أيام':'الشهر الحالي');
-R.push(T(['هضبة الشام - تقرير '+per]));R.push([]);
-const sa=tx.filter(t=>t.type==='sale').reduce((a,t)=>a+t.amount,0),ex=tx.filter(t=>t.type==='expense').reduce((a,t)=>a+t.amount,0);
-R.push(H(['الملخص','القيمة']));R.push(['إجمالي المبيعات',sa]);R.push(['إجمالي المصروفات',ex]);R.push(['صافي',sa-ex]);R.push([]);
-R.push(T(['المبيعات والمصروفات']));R.push(H(['التاريخ','البند','النوع','المبلغ','المستخدم','','ملاحظة']));
-tx.slice().sort((a,b)=>new Date(a.at)-new Date(b.at)).forEach(t=>R.push([dkey(t.at),t.cat,t.type==='sale'?'مبيعات':'مصروف',t.amount,t.user,'',t.note||'']));R.push([]);
-R.push(T(['حركات المخزون']));R.push(H(['التاريخ','الصنف','النوع','الكمية','الوحدة','القيمة','ملاحظة / الجهة']));
-mv.slice().sort((a,b)=>new Date(a.at)-new Date(b.at)).forEach(m=>R.push([dkey(m.at),iname(m.itemId),m.type==='in'?'إضافة':m.type==='out'?'سحب':'تسوية',m.qty,iu(m.itemId),Math.round(m.qty*m.price*100)/100,(m.type==='out'?m.dest+' ':'')+(m.note||'')]));
-const ct='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>';
+function cellXml(c,ref){if(c==null||c===''||(c&&c.v===''&&!c.f))return `<c r="${ref}" s="${(c&&c.s)||0}"/>`;const o=typeof c==='object'?c:{v:c,s:0};const s=o.s||0;
+if(o.f)return `<c r="${ref}" s="${s}"><f>${xe(o.f)}</f><v>${o.v}</v></c>`;
+return typeof o.v==='number'?`<c r="${ref}" s="${s}"><v>${o.v}</v></c>`:`<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${xe(o.v)}</t></is></c>`}
+function sheetXml(sh){const rows=sh.rows,nc=Math.max(...rows.map(r=>r.length),1);
+const cols=(sh.cols||[]).map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('');
+const pane=sh.freeze?`<pane ySplit="${sh.freeze}" topLeftCell="A${sh.freeze+1}" activePane="bottomLeft" state="frozen"/>`:'';
+const merges=(sh.merges||[]).length?`<mergeCells count="${sh.merges.length}">${sh.merges.map(m=>`<mergeCell ref="${m}"/>`).join('')}</mergeCells>`:'';
+return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView rightToLeft="1" showGridLines="0" workbookViewId="0"'+(sh.first?' tabSelected="1"':'')+'>'+pane+'</sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols>'+cols+'</cols><sheetData>'+rows.map((r,ri)=>`<row r="${ri+1}"${r.h?` ht="${r.h}" customHeight="1"`:''}>`+r.map((c,ci)=>cellXml(c,colL(ci)+(ri+1))).join('')+'</row>').join('')+'</sheetData>'+merges+'<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="'+(sh.land?'landscape':'portrait')+'" fitToWidth="1" fitToHeight="0"/><headerFooter><oddFooter>&amp;C&amp;P / &amp;N</oddFooter></headerFooter></worksheet>'}
+const XS={def:0,hdr:1,title:2,sub:3,txt:4,txtB:5,mon:6,monB:7,qty:8,qtyB:9,totL:10,totM:11,totQ:12,kvL:13,sec:14,netL:15,netM:16,pct:17,pctB:18};
+function stylesXml(){const bd='<border><left style="thin"><color rgb="FFBFA58F"/></left><right style="thin"><color rgb="FFBFA58F"/></right><top style="thin"><color rgb="FFBFA58F"/></top><bottom style="thin"><color rgb="FFBFA58F"/></bottom></border>';
+const xf=(n,f,fi,b,al)=>`<xf numFmtId="${n}" fontId="${f}" fillId="${fi}" borderId="${b}" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment ${al||'horizontal="right" vertical="center"'}/></xf>`;
+return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.00&quot; ج.م&quot;"/><numFmt numFmtId="165" formatCode="#,##0.###"/></numFmts>'+
+'<fonts count="6"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="18"/><color rgb="FF8A3515"/><name val="Calibri"/></font><font><i/><sz val="10"/><color rgb="FF6D5A4A"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF2B2118"/><name val="Calibri"/></font><font><b/><sz val="12"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts>'+
+'<fills count="7"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF8A3515"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF6F1EA"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF3D98B"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE8D5C4"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF2E7D32"/></patternFill></fill></fills>'+
+'<borders count="2"><border/>'+bd+'</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="19">'+
+xf(0,0,0,0)+xf(0,1,2,1,'horizontal="center" vertical="center" wrapText="1"')+xf(0,2,0,0)+xf(0,3,0,0)+
+xf(0,0,0,1)+xf(0,0,3,1)+xf(164,0,0,1)+xf(164,0,3,1)+xf(165,0,0,1)+xf(165,0,3,1)+
+xf(0,4,4,1)+xf(164,4,4,1)+xf(165,4,4,1)+xf(0,4,3,1)+xf(0,4,5,1,'horizontal="right" vertical="center"')+xf(0,5,6,1)+xf(164,5,6,1)+xf(10,0,0,1)+xf(10,0,3,1)+
+'</cellXfs></styleSheet>'}
+function buildXlsx(sheets){const names=sheets.map(s=>s.name);
+const ct='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')+'</Types>';
 const rels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
-const wb='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="التقرير" sheetId="1" r:id="rId1"/></sheets></workbook>';
-const wr='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
-const sty='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="14"/><color rgb="FF8A3515"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF8A3515"/></patternFill></fill></fills><borders count="2"><border/><border><left style="thin"><color rgb="FFCCCCCC"/></left><right style="thin"><color rgb="FFCCCCCC"/></right><top style="thin"><color rgb="FFCCCCCC"/></top><bottom style="thin"><color rgb="FFCCCCCC"/></bottom></border></borders><cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center"/></xf><xf numFmtId="0" fontId="2" fillId="0" borderId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="1" applyNumberFormat="1" applyBorder="1"/><xf numFmtId="164" fontId="2" fillId="0" borderId="0" applyNumberFormat="1"/></cellXfs></styleSheet>';
-const blob=zip([['[Content_Types].xml',ct],['_rels/.rels',rels],['xl/workbook.xml',wb],['xl/_rels/workbook.xml.rels',wr],['xl/styles.xml',sty],['xl/worksheets/sheet1.xml',sheetXml(R)]]);
+const dn=sheets.map((s,i)=>s.titleRow?`<definedName name="_xlnm.Print_Titles" localSheetId="${i}">'${xe(s.name)}'!$${s.titleRow}:$${s.titleRow}</definedName>`:'').join('');
+const wb='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+sheets.map((s,i)=>`<sheet name="${xe(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')+'</sheets>'+(dn?`<definedNames>${dn}</definedNames>`:'')+'<calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>';
+const wr='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+sheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')+`<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+return zip([['[Content_Types].xml',ct],['_rels/.rels',rels],['xl/workbook.xml',wb],['xl/_rels/workbook.xml.rels',wr],['xl/styles.xml',stylesXml()],...sheets.map((s,i)=>[`xl/worksheets/sheet${i+1}.xml`,sheetXml(s)])])}
+function exportX(){try{exportX2()}catch(e){toast('تعذر تجهيز ملف Excel: '+(e&&e.message||''))}}
+function exportX2(){const{tx,mv}=window.RX,X=XS,r2=v=>Math.round(v*100)/100;
+const per=rp==='day'?rd:(rp==='week'?'آخر ٧ أيام':'الشهر الحالي'),gen=new Date().toLocaleString('en-GB');
+const srt=a=>a.slice().sort((x,y)=>new Date(x.at)-new Date(y.at)||x.id-y.id);
+const hdr=a=>{const r=a.map(v=>({v,s:X.hdr}));r.h=24;return r};
+const title=(n,sub)=>[[{v:'هضبة الشام',s:X.title}],[{v:sub,s:X.sub}],[{v:'الفترة: '+per+'   |   تاريخ الإنشاء: '+gen,s:X.sub}],[]];
+const mk=(name,type)=>{const L=srt(tx.filter(t=>t.type===type)),rows=title(0,name==='المبيعات'?'سجل المبيعات':'سجل المصروفات');const hr=rows.length+1;rows.push(hdr(['التاريخ','البند','المبلغ','المستخدم','ملاحظة']));
+L.forEach((t,i)=>{const b=i%2;rows.push([{v:dkey(t.at),s:b?X.txtB:X.txt},{v:t.cat,s:b?X.txtB:X.txt},{v:t.amount,s:b?X.monB:X.mon},{v:t.user,s:b?X.txtB:X.txt},{v:t.note||'',s:b?X.txtB:X.txt}])});
+const f=hr+1,l=hr+L.length,tot=r2(L.reduce((a,t)=>a+t.amount,0));rows.push([{v:'الإجمالي',s:X.totL},{v:'',s:X.totL},{v:tot,f:L.length?`SUM(C${f}:C${l})`:'0',s:X.totM},{v:'',s:X.totL},{v:L.length+' بند',s:X.totL}]);
+return{name,rows,cols:[14,28,18,16,34],freeze:hr,titleRow:hr,merges:['A1:E1','A2:E2','A3:E3'],range:[f,l],tot,L,hr}};
+const S1=mk('المبيعات','sale'),S2=mk('المصروفات','expense');
+// stock movements
+const M=srt(mv),mrows=title(0,'حركات المخزون');const mh=mrows.length+1;mrows.push(hdr(['التاريخ','الصنف','النوع','الكمية','الوحدة','سعر الوحدة','القيمة','الجهة','المستخدم','ملاحظة']));
+const tn={in:'إضافة',out:'سحب',adjust:'تسوية'};
+M.forEach((m,i)=>{const b=i%2,r=mh+1+i,T=b?X.txtB:X.txt;mrows.push([{v:dkey(m.at),s:T},{v:iname(m.itemId),s:T},{v:tn[m.type]||m.type,s:T},{v:m.qty,s:b?X.qtyB:X.qty},{v:iu(m.itemId),s:T},{v:r2(m.price),s:b?X.monB:X.mon},{v:r2(m.qty*m.price),f:`D${r}*F${r}`,s:b?X.monB:X.mon},{v:m.type==='out'?(m.dest||''):'',s:T},{v:m.user,s:T},{v:m.note||'',s:T}])});
+const mf=mh+1,ml=mh+M.length,vin=r2(M.filter(m=>m.type==='in').reduce((a,m)=>a+m.qty*m.price,0)),vout=r2(M.filter(m=>m.type==='out').reduce((a,m)=>a+m.qty*m.price,0));
+const rg=c=>`${c}${mf}:${c}${ml}`;
+mrows.push([{v:'قيمة المشتريات المضافة',s:X.totL},{v:'',s:X.totL},{v:'',s:X.totL},{v:'',s:X.totL},{v:'',s:X.totL},{v:'',s:X.totL},{v:vin,f:M.length?`SUMIF(${rg('C')},"إضافة",${rg('G')})`:'0',s:X.totM},{v:'',s:X.totL},{v:'',s:X.totL},{v:'',s:X.totL}]);
+mrows.push([{v:'قيمة المسحوب للمطبخ والصالة',s:X.totL},{v:'',s:X.totL},{v:'',s:X.totL},{v:'',s:X.totL},{v:'',s:X.totL},{v:'',s:X.totL},{v:vout,f:M.length?`SUMIF(${rg('C')},"سحب",${rg('G')})`:'0',s:X.totM},{v:'',s:X.totL},{v:'',s:X.totL},{v:'',s:X.totL}]);
+const S3={name:'حركات المخزون',rows:mrows,cols:[14,26,12,12,10,16,18,14,16,28],freeze:mh,titleRow:mh,land:true,merges:['A1:J1','A2:J2','A3:J3']};
+// inventory
+const irows=title(0,'الجرد الحالي للمخزون (لحظة التصدير)');const ih=irows.length+1;irows.push(hdr(['الصنف','الوحدة','الكمية الحالية','متوسط التكلفة','القيمة','الحد الأدنى','الحالة']));
+const items=S.items.slice().sort((a,b)=>a.name.localeCompare(b.name,'ar'));
+items.forEach((it,i)=>{const b=i%2,r=ih+1+i,T=b?X.txtB:X.txt;irows.push([{v:it.name,s:T},{v:it.unit,s:T},{v:it.qty,s:b?X.qtyB:X.qty},{v:r2(it.cost),s:b?X.monB:X.mon},{v:r2(it.qty*it.cost),f:`C${r}*D${r}`,s:b?X.monB:X.mon},{v:it.min,s:b?X.qtyB:X.qty},{v:it.qty<=it.min?'ناقص':'متوفر',f:`IF(C${r}<=F${r},"ناقص","متوفر")`,s:T}])});
+const ifst=ih+1,ilst=ih+items.length,invTot=r2(items.reduce((a,i)=>a+i.qty*i.cost,0));
+irows.push([{v:'إجمالي قيمة المخزون',s:X.totL},{v:'',s:X.totL},{v:'',s:X.totL},{v:'',s:X.totL},{v:invTot,f:items.length?`SUM(E${ifst}:E${ilst})`:'0',s:X.totM},{v:'',s:X.totL},{v:'',s:X.totL}]);
+const S5={name:'الجرد الحالي',rows:irows,cols:[28,10,16,18,20,14,12],freeze:ih,titleRow:ih,merges:['A1:G1','A2:G2','A3:G3']};
+// summary
+const sm=title(0,'الملخص المالي'),q=n=>`'${n}'`;
+const sRef=S1.L.length?`SUM(${q('المبيعات')}!C${S1.range[0]}:C${S1.range[1]})`:'0',eRef=S2.L.length?`SUM(${q('المصروفات')}!C${S2.range[0]}:C${S2.range[1]})`:'0';
+sm.push(hdr(['البيان','القيمة']));const r0=sm.length;
+sm.push([{v:'إجمالي المبيعات',s:X.kvL},{v:S1.tot,f:sRef,s:X.mon}]);sm.push([{v:'إجمالي المصروفات',s:X.kvL},{v:S2.tot,f:eRef,s:X.mon}]);
+const net=r2(S1.tot-S2.tot);sm.push([{v:net>=0?'صافي الربح':'صافي الخسارة',s:X.netL},{v:net,f:`B${r0+1}-B${r0+2}`,s:X.netM}]);
+sm.push([{v:'قيمة المشتريات المضافة للمخزن',s:X.kvL},{v:vin,f:`${q('حركات المخزون')}!G${mrows.length-1}`,s:X.mon}]);
+sm.push([{v:'قيمة المسحوب للمطبخ والصالة',s:X.kvL},{v:vout,f:`${q('حركات المخزون')}!G${mrows.length}`,s:X.mon}]);
+sm.push([{v:'قيمة المخزون الحالية',s:X.kvL},{v:invTot,f:`${q('الجرد الحالي')}!E${irows.length}`,s:X.mon}]);sm.push([]);
+const catTbl=(label,S,sh)=>{const cats=[...new Set(S.L.map(t=>t.cat))].sort((a,b)=>a.localeCompare(b,'ar'));sm.push([{v:label,s:X.sec},{v:'',s:X.sec},{v:'',s:X.sec}]);sm.push(hdr(['البند','المبلغ','النسبة']));const a=sm.length+1;
+cats.forEach((c,i)=>{const b=i%2,r=sm.length+1,v=r2(S.L.filter(t=>t.cat===c).reduce((x,t)=>x+t.amount,0));sm.push([{v:c,s:b?X.txtB:X.txt},{v:v,f:`SUMIF(${q(sh)}!B${S.range[0]}:B${S.range[1]},A${r},${q(sh)}!C${S.range[0]}:C${S.range[1]})`,s:b?X.monB:X.mon},{v:S.tot?v/S.tot:0,f:`IF(B${a+cats.length}=0,0,B${r}/B${a+cats.length})`,s:b?X.pctB:X.pct}])});
+if(!cats.length)sm.push([{v:'لا توجد بيانات',s:X.txt},{v:'',s:X.txt},{v:'',s:X.txt}]);else sm.push([{v:'الإجمالي',s:X.totL},{v:S.tot,f:`SUM(B${a}:B${a+cats.length-1})`,s:X.totM},{v:'',s:X.totL}]);sm.push([])};
+catTbl('المبيعات حسب البند',S1,'المبيعات');catTbl('المصروفات حسب البند',S2,'المصروفات');
+const days=[...new Set(tx.map(t=>dkey(t.at)))].sort();
+if(days.length>1){sm.push([{v:'الصافي حسب اليوم',s:X.sec},{v:'',s:X.sec},{v:'',s:X.sec},{v:'',s:X.sec}]);sm.push(hdr(['اليوم','المبيعات','المصروفات','الصافي']));const a=sm.length+1;
+days.forEach((d,i)=>{const b=i%2,r=sm.length+1,s=r2(S1.L.filter(t=>dkey(t.at)===d).reduce((x,t)=>x+t.amount,0)),e=r2(S2.L.filter(t=>dkey(t.at)===d).reduce((x,t)=>x+t.amount,0));
+sm.push([{v:d,s:b?X.txtB:X.txt},{v:s,f:S1.L.length?`SUMIF(${q('المبيعات')}!A${S1.range[0]}:A${S1.range[1]},A${r},${q('المبيعات')}!C${S1.range[0]}:C${S1.range[1]})`:'0',s:b?X.monB:X.mon},{v:e,f:S2.L.length?`SUMIF(${q('المصروفات')}!A${S2.range[0]}:A${S2.range[1]},A${r},${q('المصروفات')}!C${S2.range[0]}:C${S2.range[1]})`:'0',s:b?X.monB:X.mon},{v:r2(s-e),f:`B${r}-C${r}`,s:b?X.monB:X.mon}])});
+const z=a+days.length-1;sm.push([{v:'الإجمالي',s:X.totL},{v:S1.tot,f:`SUM(B${a}:B${z})`,s:X.totM},{v:S2.tot,f:`SUM(C${a}:C${z})`,s:X.totM},{v:net,f:`SUM(D${a}:D${z})`,s:X.totM}])}
+const S0={name:'الملخص',rows:sm,cols:[44,20,20,20],first:1,titleRow:null,merges:['A1:D1','A2:D2','A3:D3']};
+const blob=buildXlsx([S0,{...S1,name:'المبيعات'},{...S2,name:'المصروفات'},S3,S5]);
 const name='hadbat-'+(rp==='day'?rd:rp)+'.xlsx';
 if(window.AndroidApp&&AndroidApp.save){const r=new FileReader();r.onload=()=>AndroidApp.save(name,r.result.split(',')[1]);r.readAsDataURL(blob);return}
+if(/; wv\)/.test(navigator.userAgent)){toast('حدّث التطبيق لآخر نسخة عشان التصدير يشتغل، أو افتح الرابط من المتصفح');return}
 const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(a.href)},2000);toast('تم تجهيز ملف Excel')}
 
 show();
