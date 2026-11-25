@@ -28,5 +28,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           V=$(node -p "require('./package.json').version")
-          gh release view "desktop-v$V" >/dev/null 2>&1 || gh release create "desktop-v$V" --title "هضبة الشام لويندوز v$V" --notes "Windows installer"
-          gh release upload "desktop-v$V" "dist/HadbatAlSham-Setup-$V.exe" --clobber
+          ls -la dist
+          F=$(ls dist/*.exe | grep -v -i uninstall | head -1)
+          echo "file: $F"
+          gh release create "desktop-v$V" "$F" --title "Windows v$V" --notes "Windows installer" || gh release upload "desktop-v$V" "$F" --clobber
