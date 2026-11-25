@@ -136,11 +136,10 @@ const dkey=d=>{d=new Date(d);return d.getFullYear()+'-'+String(d.getMonth()+1).p
 function home(){const k=dkey(new Date()),td=S.txs.filter(t=>dkey(t.at)===k),sa=td.filter(t=>t.type==='sale').reduce((a,t)=>a+t.amount,0),ex=td.filter(t=>t.type==='expense').reduce((a,t)=>a+t.amount,0);
  const val=S.items.reduce((a,i)=>a+i.qty*i.cost,0),low=S.items.filter(i=>i.min>0&&i.qty<=i.min);
  const outs=S.moves.filter(m=>m.type==='out'&&dkey(m.at)===k);const outv=outs.reduce((a,m)=>a+m.qty*m.price,0);
- const hr=new Date().getHours(),gr=hr<12?'صباح الخير':hr<18?'مساء الخير':'مساء الخير';
  const dt=ad(new Date().toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long'}).replace(/[\u0660-\u0669]/g,d=>d.charCodeAt(0)-1632));
  const net=sa-ex;
  const qa=(c,i,l,f)=>`<button class="${c}" onclick="${f}"><span class="ic">${ico(i)}</span>${l}</button>`;
- $('#m').innerHTML=`<div class="hello"><small>${new Date().toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long'})}</small><h2>${gr}، ${esc(S.me.name)}</h2></div>
+ $('#m').innerHTML=`<div class="hello"><small>${new Date().toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long'})}</small><h2>اليوم</h2></div>
  <div class="hero"><small>صافي اليوم</small><div class="big">${net<0?'−':''}${money(Math.abs(net))}</div><div class="two"><div><small>${ico('up').replace('class="i"','class="i" style="width:14px;height:14px;vertical-align:-2px"')} مبيعات</small><b>${money(sa)}</b></div><div><small>${ico('down').replace('class="i"','class="i" style="width:14px;height:14px;vertical-align:-2px"')} مصروفات</small><b>${money(ex)}</b></div></div></div>
  <div class="qa">${qa('g','plus','إضافة مخزون',"moveDlg('in')")}${qa('r','minus','سحب للمطبخ',"moveDlg('out')")}${qa('g','up','مبيعات',"txDlg('sale')")}${qa('o','down','مصروف',"txDlg('expense')")}</div>
  <div class="g2"><div class="stat"><small>قيمة المخزون</small><b>${money(val)}</b></div><div class="stat"><small>المسحوب اليوم</small><b>${money(outv)}</b></div></div>
@@ -294,10 +293,20 @@ if(/; wv\)/.test(navigator.userAgent)){toast('حدّث التطبيق لآخر �
 const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(a.href)},2000);toast('تم تجهيز ملف Excel')}
 
 show();
-const BUILD='20261125e',T0=Date.now();
+const BUILD='20261125f',T0=Date.now();
 async function chkUpd(){try{const r=await fetch('index.html?_='+Date.now(),{cache:'no-store'});if(!r.ok)return;const m=(await r.text()).match(/const BUILD='([^']+)'/);if(!m||m[1]===BUILD)return;
 if(Date.now()-T0<20000){location.reload();return}
-if(document.getElementById('updbar'))return;const d=document.createElement('div');d.id='updbar';d.style.cssText='position:fixed;left:12px;right:12px;bottom:76px;z-index:9999;background:#5e2410;color:#fff;border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;font-size:15px';d.innerHTML='<span>تحديث جديد متاح</span><button style="background:#d9a21b;border:0;border-radius:8px;padding:8px 16px;font-weight:700;color:#3a1608;font-size:15px">تحديث الآن</button>';d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d)}catch(e){}}
+if(document.getElementById('updbar'))return;const d=document.createElement('div');d.id='updbar';d.style.cssText='position:fixed;left:12px;right:12px;bottom:76px;z-index:9999;background:#5e2410;color:#fff;border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;font-size:15px';d.innerHTML='<span>فيه تحديث جديد - اضغط للتحديث</span><button style="background:#d9a21b;border:0;border-radius:8px;padding:8px 16px;font-weight:700;color:#3a1608;font-size:15px">تحديث</button>';d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d)}catch(e){}}
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').then(r=>r.update()).catch(()=>{}));
+
+async function chkApp(){try{const ua=navigator.userAgent,an=/\bwv\b|HadbatApk/.test(ua)&&/Android/.test(ua),dm=ua.match(/hadabat-sham\/([\d.]+)/),ap=ua.match(/HadbatApk\/(\d+)/);if(!an&&!dm)return;
+const r=await fetch('version.json?_='+Date.now(),{cache:'no-store'});if(!r.ok)return;const v=await r.json();let url,tag;
+if(an){const cur=ap?+ap[1]:0;if(!(v.apk&&v.apk.code>cur))return;url=v.apk.url;tag='a'+v.apk.code}
+else{const cmp=(a,b)=>{a=a.split('.').map(Number);b=b.split('.').map(Number);for(let i=0;i<3;i++){if((a[i]||0)!==(b[i]||0))return(a[i]||0)-(b[i]||0)}return 0};if(!(v.desktop&&cmp(v.desktop.version,dm[1])>0))return;url=v.desktop.url;tag='d'+v.desktop.version}
+if(localStorage.updSkip===tag||document.getElementById('appupd'))return;
+const d=document.createElement('div');d.id='appupd';d.style.cssText='position:fixed;left:12px;right:12px;top:64px;z-index:9999;background:#5e2410;color:#fff;border-radius:12px;padding:12px 16px;display:flex;gap:10px;justify-content:space-between;align-items:center;font-size:15px';
+d.innerHTML='<span>فيه تحديث جديد للتطبيق - اضغط للتحديث</span><span style="display:flex;gap:8px"><button id="au1" style="background:#d9a21b;border:0;border-radius:8px;padding:8px 16px;font-weight:700;color:#3a1608;font-size:15px">تحديث</button><button id="au2" style="background:transparent;border:1px solid #fff6;border-radius:8px;padding:8px 12px;color:#fff;font-size:14px">لاحقًا</button></span>';document.body.appendChild(d);
+d.querySelector('#au1').onclick=()=>{if(an)location.href=url;else window.open(url,'_blank');d.remove()};d.querySelector('#au2').onclick=()=>{localStorage.updSkip=tag;d.remove()}}catch(e){}}
+addEventListener('load',()=>setTimeout(chkApp,2500));document.addEventListener('visibilitychange',()=>{if(!document.hidden)chkApp()});
 addEventListener('load',()=>setTimeout(chkUpd,800));document.addEventListener('visibilitychange',()=>{if(!document.hidden)chkUpd()});setInterval(chkUpd,300000);
 </script></body></html>
