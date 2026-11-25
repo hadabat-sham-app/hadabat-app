@@ -1,0 +1,46 @@
+{
+ "name": "hadabat-sham",
+ "productName": "هضبة الشام",
+ "version": "1.4.0",
+ "description": "هضبة الشام",
+ "author": "Hadabet",
+ "main": "main.js",
+ "build": {
+  "appId": "com.hadabet.desktop",
+  "productName": "HadbatAlSham",
+  "win": {
+   "target": [
+    {
+     "target": "nsis",
+     "arch": [
+      "x64"
+     ]
+    }
+   ],
+   "icon": "icon.png",
+   "signAndEditExecutable": false
+  },
+  "nsis": {
+   "oneClick": false,
+   "allowToChangeInstallationDirectory": true,
+   "perMachine": false,
+   "createDesktopShortcut": true,
+   "createStartMenuShortcut": true,
+   "shortcutName": "هضبة الشام",
+   "artifactName": "HadbatAlSham-Setup-${version}.exe"
+  },
+  "files": [
+   "main.js",
+   "icon.png",
+   "package.json"
+  ],
+  "directories": {
+   "output": "dist"
+  },
+  "compression": "normal"
+ },
+ "devDependencies": {
+  "electron": "^33",
+  "electron-builder": "^25"
+ }
+}
