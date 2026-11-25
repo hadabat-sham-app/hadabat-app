@@ -206,9 +206,10 @@ function set(){$('#m').innerHTML=`<div class="card"><b>المستخدمون</b>$
  $('#ep').onclick=async()=>{try{await api('password',{password:$('#e1').value});toast('تم التغيير');$('#e1').value=''}catch(e){toast(e)}}}
 const crcT=(()=>{const t=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
 const crc=b=>{let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=crcT[(c^b[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0};
-function zip(files){const E=new TextEncoder(),ch=[],cd=[];let off=0;const u16=v=>[v&255,v>>8&255],u32=v=>[v&255,v>>8&255,v>>16&255,v>>24&255];
-for(const[n,d]of files){const nb=E.encode(n),db=E.encode(d),c=crc(db);const h=[0x50,0x4b,3,4,...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(c),...u32(db.length),...u32(db.length),...u16(nb.length),...u16(0)];
-ch.push(new Uint8Array(h),nb,db);cd.push([[0x50,0x4b,1,2,...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(c),...u32(db.length),...u32(db.length),...u16(nb.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)],nb]);off+=h.length+nb.length+db.length}
+async function dfl(b){try{if(typeof CompressionStream==='undefined')return null;const cs=new CompressionStream('deflate-raw'),w=cs.writable.getWriter();w.write(b);w.close();const r=await new Response(cs.readable).arrayBuffer();const o=new Uint8Array(r);return o.length<b.length?o:null}catch(e){return null}}
+async function zip(files){const E=new TextEncoder(),ch=[],cd=[];let off=0;const u16=v=>[v&255,v>>8&255],u32=v=>[v&255,v>>8&255,v>>16&255,v>>24&255];
+for(const[n,d]of files){const nb=E.encode(n),raw=E.encode(d),c=crc(raw),cz=await dfl(raw),db=cz||raw,me=cz?8:0;const h=[0x50,0x4b,3,4,...u16(20),...u16(0x0800),...u16(me),...u16(0),...u16(0x21),...u32(c),...u32(db.length),...u32(raw.length),...u16(nb.length),...u16(0)];
+ch.push(new Uint8Array(h),nb,db);cd.push([[0x50,0x4b,1,2,...u16(20),...u16(20),...u16(0x0800),...u16(me),...u16(0),...u16(0x21),...u32(c),...u32(db.length),...u32(raw.length),...u16(nb.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)],nb]);off+=h.length+nb.length+db.length}
 let cs=0;const cp=[];cd.forEach(([h,nb])=>{cp.push(new Uint8Array(h),nb);cs+=h.length+nb.length});
 const end=new Uint8Array([0x50,0x4b,5,6,0,0,0,0,...u16(files.length),...u16(files.length),...u32(cs),...u32(off),0,0]);return new Blob([...ch,...cp,end],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})}
 const xe=v=>String(v).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'');
@@ -232,15 +233,15 @@ xf(0,0,0,0)+xf(0,1,2,1,'horizontal="center" vertical="center" wrapText="1"')+xf(
 xf(0,0,0,1)+xf(0,0,3,1)+xf(164,0,0,1)+xf(164,0,3,1)+xf(165,0,0,1)+xf(165,0,3,1)+
 xf(0,4,4,1)+xf(164,4,4,1)+xf(165,4,4,1)+xf(0,4,3,1)+xf(0,4,5,1,'horizontal="right" vertical="center"')+xf(0,5,6,1)+xf(164,5,6,1)+xf(10,0,0,1)+xf(10,0,3,1)+
 '</cellXfs></styleSheet>'}
-function buildXlsx(sheets){const names=sheets.map(s=>s.name);
+async function buildXlsx(sheets){const names=sheets.map(s=>s.name);
 const ct='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')+'</Types>';
 const rels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
 const dn=sheets.map((s,i)=>s.titleRow?`<definedName name="_xlnm.Print_Titles" localSheetId="${i}">'${xe(s.name)}'!$${s.titleRow}:$${s.titleRow}</definedName>`:'').join('');
 const wb='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+sheets.map((s,i)=>`<sheet name="${xe(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')+'</sheets>'+(dn?`<definedNames>${dn}</definedNames>`:'')+'<calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>';
 const wr='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+sheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')+`<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
-return zip([['[Content_Types].xml',ct],['_rels/.rels',rels],['xl/workbook.xml',wb],['xl/_rels/workbook.xml.rels',wr],['xl/styles.xml',stylesXml()],...sheets.map((s,i)=>[`xl/worksheets/sheet${i+1}.xml`,sheetXml(s)])])}
-function exportX(){try{exportX2()}catch(e){toast('تعذر تجهيز ملف Excel: '+(e&&e.message||''))}}
-function exportX2(){const{tx,mv}=window.RX,X=XS,r2=v=>Math.round(v*100)/100;
+return await zip([['[Content_Types].xml',ct],['_rels/.rels',rels],['xl/workbook.xml',wb],['xl/_rels/workbook.xml.rels',wr],['xl/styles.xml',stylesXml()],...sheets.map((s,i)=>[`xl/worksheets/sheet${i+1}.xml`,sheetXml(s)])])}
+async function exportX(){try{toast('جاري تجهيز الملف...');await exportX2()}catch(e){toast('تعذر تجهيز ملف Excel: '+(e&&e.message||''))}}
+async function exportX2(){const{tx,mv}=window.RX,X=XS,r2=v=>Math.round(v*100)/100;
 const per=rp==='day'?rd:(rp==='week'?'آخر ٧ أيام':'الشهر الحالي'),gen=new Date().toLocaleString('en-GB');
 const srt=a=>a.slice().sort((x,y)=>new Date(x.at)-new Date(y.at)||x.id-y.id);
 const hdr=a=>{const r=a.map(v=>({v,s:X.hdr}));r.h=24;return r};
@@ -285,14 +286,14 @@ days.forEach((d,i)=>{const b=i%2,r=sm.length+1,s=r2(S1.L.filter(t=>dkey(t.at)===
 sm.push([{v:d,s:b?X.txtB:X.txt},{v:s,f:S1.L.length?`SUMIF(${q('المبيعات')}!A${S1.range[0]}:A${S1.range[1]},A${r},${q('المبيعات')}!C${S1.range[0]}:C${S1.range[1]})`:'0',s:b?X.monB:X.mon},{v:e,f:S2.L.length?`SUMIF(${q('المصروفات')}!A${S2.range[0]}:A${S2.range[1]},A${r},${q('المصروفات')}!C${S2.range[0]}:C${S2.range[1]})`:'0',s:b?X.monB:X.mon},{v:r2(s-e),f:`B${r}-C${r}`,s:b?X.monB:X.mon}])});
 const z=a+days.length-1;sm.push([{v:'الإجمالي',s:X.totL},{v:S1.tot,f:`SUM(B${a}:B${z})`,s:X.totM},{v:S2.tot,f:`SUM(C${a}:C${z})`,s:X.totM},{v:net,f:`SUM(D${a}:D${z})`,s:X.totM}])}
 const S0={name:'الملخص',rows:sm,cols:[44,20,20,20],first:1,titleRow:null,merges:['A1:D1','A2:D2','A3:D3']};
-const blob=buildXlsx([S0,{...S1,name:'المبيعات'},{...S2,name:'المصروفات'},S3,S5]);
+const blob=await buildXlsx([S0,{...S1,name:'المبيعات'},{...S2,name:'المصروفات'},S3,S5]);
 const name='hadbat-'+(rp==='day'?rd:rp)+'.xlsx';
 if(window.AndroidApp&&AndroidApp.save){const r=new FileReader();r.onload=()=>AndroidApp.save(name,r.result.split(',')[1]);r.readAsDataURL(blob);return}
 if(/; wv\)/.test(navigator.userAgent)){toast('حدّث التطبيق لآخر نسخة عشان التصدير يشتغل، أو افتح الرابط من المتصفح');return}
 const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(a.href)},2000);toast('تم تجهيز ملف Excel')}
 
 show();
-const BUILD='20261125g',T0=Date.now();
+const BUILD='20261125h',T0=Date.now();
 async function chkUpd(){try{const r=await fetch('index.html?_='+Date.now(),{cache:'no-store'});if(!r.ok)return;const m=(await r.text()).match(/const BUILD='([^']+)'/);if(!m||m[1]===BUILD)return;
 if(Date.now()-T0<20000){location.reload();return}
 if(document.getElementById('updbar'))return;const d=document.createElement('div');d.id='updbar';d.style.cssText='position:fixed;left:12px;right:12px;bottom:76px;z-index:9999;background:#5e2410;color:#fff;border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;font-size:15px';d.innerHTML='<span>فيه تحديث جديد - اضغط للتحديث</span><button style="background:#d9a21b;border:0;border-radius:8px;padding:8px 16px;font-weight:700;color:#3a1608;font-size:15px">تحديث</button>';d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d)}catch(e){}}
