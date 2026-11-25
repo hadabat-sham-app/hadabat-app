@@ -1,7 +1,7 @@
 {
  "name": "hadabat-sham",
  "productName": "هضبة الشام",
- "version": "1.4.0",
+ "version": "1.4.1",
  "description": "هضبة الشام",
  "author": "Hadabet",
  "main": "main.js",
@@ -40,7 +40,7 @@
   "compression": "normal"
  },
  "devDependencies": {
-  "electron": "^33",
+  "electron": "22.3.27",
   "electron-builder": "^25"
  }
 }
