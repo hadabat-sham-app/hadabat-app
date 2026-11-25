@@ -288,5 +288,10 @@ if(/; wv\)/.test(navigator.userAgent)){toast('حدّث التطبيق لآخر �
 const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(a.href)},2000);toast('تم تجهيز ملف Excel')}
 
 show();
-if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+const BUILD='20261125c',T0=Date.now();
+async function chkUpd(){try{const r=await fetch('index.html?_='+Date.now(),{cache:'no-store'});if(!r.ok)return;const m=(await r.text()).match(/const BUILD='([^']+)'/);if(!m||m[1]===BUILD)return;
+if(Date.now()-T0<20000){location.reload();return}
+if(document.getElementById('updbar'))return;const d=document.createElement('div');d.id='updbar';d.style.cssText='position:fixed;left:12px;right:12px;bottom:76px;z-index:9999;background:#5e2410;color:#fff;border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;font-size:15px';d.innerHTML='<span>تحديث جديد متاح</span><button style="background:#d9a21b;border:0;border-radius:8px;padding:8px 16px;font-weight:700;color:#3a1608;font-size:15px">تحديث الآن</button>';d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d)}catch(e){}}
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').then(r=>r.update()).catch(()=>{}));
+addEventListener('load',()=>setTimeout(chkUpd,800));document.addEventListener('visibilitychange',()=>{if(!document.hidden)chkUpd()});setInterval(chkUpd,300000);
 </script></body></html>
