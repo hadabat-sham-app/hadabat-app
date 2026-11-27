@@ -73,7 +73,7 @@ main{max-width:none;margin:0;margin-right:220px;padding:24px 36px 60px}
 .hero,.qa,.g2,.card{max-width:980px}.hello h2{font-size:26px}.hero .big{font-size:38px}#qb{bottom:0}
 .dsk{display:grid;grid-template-columns:1.1fr 1fr;gap:14px;max-width:980px}.dsk>.card{max-width:none}}
 .btn.sm svg.i{width:17px;height:17px}.btn.sm{display:inline-flex;align-items:center;justify-content:center}
-</style></head><body><div id="splash"><div class="l">ه</div><b>هضبة الشام</b></div><div id="qb"></div><div id="app"></div>
+</style></head><body><div id="splash"><div class="l">ه</div><b>هضبة الشام</b></div><div id="qb" onclick="qdlg()"></div><div id="app"></div>
 <script>
 const $=s=>document.querySelector(s);let T=localStorage.tok||'',S=null,tab='home',live=false,ev;
 addEventListener('error',e=>{try{toast('حدث خطأ غير متوقع، حاول مرة أخرى')}catch(x){}});addEventListener('unhandledrejection',e=>{e.preventDefault();if(e.reason!==0)try{toast(typeof e.reason==='string'?e.reason:'حدث خطأ غير متوقع، حاول مرة أخرى')}catch(x){}});document.addEventListener('contextmenu',e=>{if(!/INPUT|TEXTAREA/.test(e.target.tagName))e.preventDefault()});
@@ -96,13 +96,19 @@ case'users':return rpc('add_user',{t:T,p_user:b.username,p_name:b.name,p_pass:b.
 case'ulist':return rpc('list_users',{t:T});case'upw':return rpc('reset_user_pw',{t:T,p_id:b.id,p_pass:b.password});case'udel':return rpc('remove_user',{t:T,p_id:b.id});
 case'password':return rpc('change_password',{t:T,p_pass:b.password});
 }throw 'غير معروف'};
-const getQ=()=>{try{return JSON.parse(localStorage.q||'[]')}catch(e){return[]}};const setQ=q=>{localStorage.q=JSON.stringify(q);const el=document.getElementById('qb');if(el){el.style.display=q.length?'block':'none';el.textContent='⏳ '+q.length+' عملية محفوظة على الجهاز وهتتسجل أول ما الإنترنت يرجع'}};
+const getQ=()=>{try{return JSON.parse(localStorage.q||'[]')}catch(e){return[]}};const getF=()=>{try{return JSON.parse(localStorage.qf||'[]')}catch(e){return[]}};const setF=f=>{localStorage.qf=JSON.stringify(f);setQ(getQ())};
+const setQ=q=>{localStorage.q=JSON.stringify(q);const f=getF().length,el=document.getElementById('qb');if(el){el.style.display=(q.length||f)?'block':'none';el.style.cursor='pointer';el.style.background=f?'#c62828':'';el.style.color=f?'#fff':'';el.textContent=(f?'⚠ '+f+' عملية فشلت - اضغط للمراجعة':'')+(f&&q.length?' | ':'')+(q.length?'⏳ '+q.length+' عملية في انتظار الإنترنت - اضغط للتفاصيل':'')}};
+const qd=it=>{const b=it.b||{},t=new Date(it.ts||Date.now()).toLocaleString('ar-EG',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'numeric'});if(it.p==='move'){const i=(S&&S.items||[]).find(x=>x.id===b.itemId);return (b.type==='in'?'وارد':b.type==='out'?'منصرف':'جرد')+' - '+(i?i.name:'صنف')+' - '+b.qty+' ('+t+')'}return (b.type==='sale'?'مبيعات':'مصروف')+' - '+(b.cat||'')+' - '+b.amount+' ('+t+')'};
+function qdlg(){const q=getQ(),f=getF();if(!q.length&&!f.length)return;const m=dlg(`<h3>العمليات المحفوظة</h3>${q.length?`<b>في الانتظار (${q.length})</b>${q.map(it=>`<div class="row"><span class="n">${esc(qd(it))}</span></div>`).join('')}`:''}${f.length?`<b style="color:var(--r)">فشلت (${f.length})</b>${f.map((it,i)=>`<div class="row" style="flex-wrap:wrap"><span class="n" style="flex-basis:100%">${esc(qd(it))}<br><small class="s">${esc(String(it.err||''))}</small></span><button class="btn o" data-r="${i}" style="padding:6px 10px;font-size:13px">إعادة المحاولة</button><button class="btn r" data-c="${i}" style="padding:6px 10px;font-size:13px">مسح</button></div>`).join('')}`:''}`);
+ m.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{const F=getF(),it=F.splice(+b.dataset.r,1)[0];setF(F);if(it){delete it.err;setQ(getQ().concat([it]));flushQ()}m.remove();toast('بنحاول تاني')});
+ m.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{m.remove();ask('مسح العملية دي نهائياً؟ مش هتتسجل.',()=>{const F=getF();F.splice(+b.dataset.c,1);setF(F)})})}
+
 const api=async(p,b)=>{if((p==='move'||p==='tx')&&b&&!b.op)b={...b,op:Date.now().toString(36)+Math.random().toString(36).slice(2,10)};try{return await apiRaw(p,b)}catch(e){if(e===NETERR&&(p==='move'||p==='tx')){setQ(getQ().concat([{p,b,ts:Date.now(),id:Math.random().toString(36).slice(2)}]));toast('مفيش إنترنت، العملية اتحفظت وهتتسجل تلقائياً');return{queued:1}}throw e}};
 let flushing=false;
 const same=(it,x)=>it.p==='move'?(x.itemId===it.b.itemId&&x.type===it.b.type&&Math.abs(x.qty-it.b.qty)<1e-9&&(x.dest||'')===(it.b.dest||'')&&(x.note||'')===(it.b.note||'')):(x.type===it.b.type&&x.cat===it.b.cat&&Math.abs(x.amount-it.b.amount)<1e-9&&(x.note||'')===(it.b.note||''));
 async function flushQ(){if(flushing)return;if(!getQ().length)return;flushing=true;try{let st=null;try{st=await apiRaw('state')}catch(e){if(e===NETERR)return}const used=new Set();
  while(getQ().length){const it=getQ()[0];let dup=false;if(st&&it.ts){const L=it.p==='move'?st.moves:st.txs;const m=L.find(x=>!used.has(x.id)&&new Date(x.at).getTime()>=it.ts-120000&&same(it,x)&&(!it.b.at)&&!it.b.op);if(m){used.add(m.id);dup=true}}
-  if(!dup){try{await apiRaw(it.p,it.b)}catch(e){if(e===NETERR)break;try{localStorage.qf=JSON.stringify(JSON.parse(localStorage.qf||'[]').concat([it]))}catch(x){}toast('عملية محفوظة على الجهاز تعذر تسجيلها: '+e)}}
+  if(!dup){try{await apiRaw(it.p,it.b)}catch(e){if(e===NETERR)break;try{setF(getF().concat([{...it,err:String(e&&e.message||e)}]))}catch(x){}toast('عملية محفوظة على الجهاز تعذر تسجيلها: '+e)}}
   setQ(getQ().slice(1))}}finally{flushing=false}if(!getQ().length)refresh()}
 const ad=s=>String(s).replace(/\d/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]).replace(/\./g,'٫');
 const fn=n=>ad((Math.round(n*100)/100).toLocaleString('en-US'));const money=n=>fn(n)+' ج.م';
@@ -297,7 +303,7 @@ if(/; wv\)/.test(navigator.userAgent)){toast('حدّث التطبيق لآخر �
 const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(a.href)},2000);toast('تم تجهيز ملف Excel')}
 
 show();
-const BUILD='20261127a',T0=Date.now();addEventListener('error',e=>{try{let d=document.getElementById('dbg');if(!d){d=document.createElement('div');d.id='dbg';d.style.cssText='position:fixed;left:8px;right:8px;top:8px;z-index:99999;background:#fff;color:#c62828;border:1px solid #c62828;border-radius:8px;padding:8px;font-size:12px;direction:ltr;word-break:break-all';d.onclick=()=>d.remove();document.body.appendChild(d)}d.textContent=String(e.message||e.error).slice(0,200)+' @'+(e.lineno||'')}catch(x){}});
+const BUILD='20261127b',T0=Date.now();addEventListener('error',e=>{try{let d=document.getElementById('dbg');if(!d){d=document.createElement('div');d.id='dbg';d.style.cssText='position:fixed;left:8px;right:8px;top:8px;z-index:99999;background:#fff;color:#c62828;border:1px solid #c62828;border-radius:8px;padding:8px;font-size:12px;direction:ltr;word-break:break-all';d.onclick=()=>d.remove();document.body.appendChild(d)}d.textContent=String(e.message||e.error).slice(0,200)+' @'+(e.lineno||'')}catch(x){}});
 async function chkUpd(){try{const r=await fetch('index.html?_='+Date.now(),{cache:'no-store'});if(!r.ok)return;const m=(await r.text()).match(/const BUILD='([^']+)'/);if(!m||m[1]===BUILD)return;
 if(Date.now()-T0<20000){if(sessionStorage.rl!==m[1]){sessionStorage.rl=m[1];location.reload()}return}
 if(document.getElementById('updbar'))return;const d=document.createElement('div');d.id='updbar';d.style.cssText='position:fixed;left:12px;right:12px;bottom:76px;z-index:9999;background:#5e2410;color:#fff;border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;font-size:15px';d.innerHTML='<span>فيه تحديث جديد - اضغط للتحديث</span><button style="background:#d9a21b;border:0;border-radius:8px;padding:8px 16px;font-weight:700;color:#3a1608;font-size:15px">تحديث</button>';d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d)}catch(e){}}
